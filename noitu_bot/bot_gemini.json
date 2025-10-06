@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "newgamehub",
+  "private_key_id": "ce42f0dbdcfafc28bd4f7651b4259ec43e03ef18",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDi44K5FhuLBdQ+\nCOPqsfYSGo3TehHxHJmRBCGxOmHEcxn07xy7GSWNZTc4YzQthCIDluzazSdEcU1/\n4R+OoDKO1viyDvcJfoEGDvI+7guvyjOms3aS5M92otiSmKUoMrEzexFINW22gc3B\nL/MekikL7QQILom/KwXmsqE6kKI5NzsybqmnayJHoQwwEeDnsSFrvgZcDzIS7ku0\nDQiIlqiS9ISIm412ZzDB65HigfrPsPEn1I7A61+Z6Ctc60rofRhHF9295RqzdW43\nWdtuiq73vENb+Q5Zn0MRfdztE39VfPDvaO32fwinmezC09jouYcchm6sRKsHOrto\nG+T/rqY5AgMBAAECggEATMwjiFCiXAlKEQFjXCKGnxQb43QTNKCwnjRezyVqyFsJ\ncy2odPALFPQon858b9ekx8BDRcBhRTpwuBNUYit5UX4USfjkx3Lpa0qN1p0umX8A\nwrFGNmx6iLaQRfajGJsn/bvvWpizHS6MnZKEYVmpyR6d2cMe3vVKFw9poXApaOHU\n3cFwTvmd0E9kaLnLxnGzdJ63nkhepB1Ov7IoyoYJQ6W/qEqVScbYZNg4GQEnh14Q\nlrSzbejaQwHBC32LLGqnjyuB1CSUIXNQFzjYEoJ3eviKEh2DrnWnXR/7OQEMYbwI\nUoFg4NRYgzG6ZSs2hnt0JKIatIJ5rvvN2DtWSivTLQKBgQD0NTMIXV++1haQDCbM\nfFmcmDWF84SuFK8usjOqu4EVvoKk0O74k5vk1ozQt7Bzn2LPaXgSJJI9Q5O0K//p\nRdXKMxrP2MCtHNXw2Un6ltkEUqaVB2rT57DbpfytYTn8ex/X1/I7O7t/ZGLQhTeQ\n23t9LpyGeb71WIkpaeycApNQtwKBgQDt2DgtwPr7AQgSCWtSdSJXjLsmRzCGUZd3\ny5Zbfyd2rM2ydKgNEx+nmYTNxz7JQFPy25QBg50poeJyNuEIlyBu19zGoDT8QATa\npF3gUbRAcgG9HhQKjYU6I1mq4N1KvBOzW2q0CvGXADtxVDj66GrR2ovNjhrGP8MR\nRW7PDw/wjwKBgA77uJ7Zw8ccsZOy+ypusrzV5erLDyfzIvB1hJAEIx5navKb0x2z\nSMxYkZk4u/3MGK7rJK/QSJyzqbtTO8dfPofCbPG1tdSpQUMewdg7KyOFwqzAIMDR\npVtEquUkYv9nuoNuv3D88DsXuKxckBU2MjRzCK2DiMDa5seAtUC5M7qvAoGACDOw\nnENPZGCAur6AaPOJH6PGwGcsETW3F3Z51OXponoLDeBf+zNxoAH3RnFchOwm+PUB\ngZvcS5c9i9rAn982Sxw+jMrxiNFcWX3ZjubCZIaJ8M+cuVBwC7U0XmQqvW0G8ORy\nJYtLEX38jsfsvxpMtLfookoIOlXwkCPo0lMepZkCgYB4mlxVfgJMGZL1DftRE1NT\n+Qb3KcbYbtS3wBEipcz0P7Q7msjv7zWmegKxF9N7bAqVHJMfUdHqZSLpT5M45myH\nn02Z+mJqBUl+/oksxhDfHdOAkEn35bcj17RgiKaY2TxJM5C+bzYpOV7F0A9Eh+58\n/ZGhTLsAIn7t3j7OaU8lUw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "discord-bot-service-account@newgamehub.iam.gserviceaccount.com",
+  "client_id": "110883126903356856262",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/discord-bot-service-account%40newgamehub.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

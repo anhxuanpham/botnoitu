@@ -1,0 +1,17 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+
+  botguide:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - OPEN_AI=${OPEN_AI}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - CHANNEL_ID=${CHANNEL_ID}
+    command: python main.py
