@@ -13,16 +13,20 @@ if platform.system().lower().startswith("win"):
             load_dotenv(p, override=False)
     except Exception:
         pass
-Fail_Limit = 10
-GOOGLE_BASE64: str = os.getenv("GOOGLE_CREDENTIALS_BASE64", 0)
-DISCORD_TOKEN: str = os.getenv('DISCORD_TOKEN', 0)
-CHANNEL_ID: int = int(os.getenv('CHANNEL_ID', 0))
+Fail_Limit = 20
+GOOGLE_BASE64: str = os.getenv("GOOGLE_CREDENTIALS_BASE64")
+DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN", "")
+OPEN_AI: str = os.getenv("OPEN_AI", "")
+OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "")
 
-CHAT_CHANNEL_IDS = os.getenv('CHAT_CHANNEL_IDS', 0)
-CHAT_ROLE_ID: int = int(os.getenv('CHAT_ROLE_ID', 0))
-ROLE_ID: int = int(os.getenv("ROLE_ID", 0))
-OPEN_AI = os.getenv("OPEN_AI")
-OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.yescale.io/v1")
+# FIX: ID's must be converted to int. Using '0' as safe default to prevent NoneType crash.
+CHANNEL_ID: int = int(os.getenv('CHANNEL_ID', '0'))
+CHAT_ROLE_ID: int = int(os.getenv('CHAT_ROLE_ID', '0'))
+ROLE_ID: int = int(os.getenv("ROLE_ID", '0'))
+
+# FIX: Đảm bảo CHAT_CHANNEL_IDS là một LIST of INTs bằng cách đọc từ env và tách bằng dấu phẩy (nếu có).
+chat_channels_raw = os.getenv('CHAT_CHANNEL_IDS', str(CHANNEL_ID))
+CHAT_CHANNEL_IDS: list[int] = [int(i.strip()) for i in chat_channels_raw.split(',') if i.strip().isdigit()]
 
 DICT_PATH = Path("words/words.txt")
 LEADERBOARD_PATH = Path("data/leaderboard.json")

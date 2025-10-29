@@ -14,4 +14,7 @@ services:
       - OPEN_AI=${OPEN_AI}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL}
       - CHANNEL_ID=${CHANNEL_ID}
+      - ROLE_ID=${ROLE_ID}
     command: python main.py
+    ports:
+      - "8000:8000"
