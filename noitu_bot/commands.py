@@ -71,21 +71,12 @@ class NoituSlash(app_commands.Group):
         name="batdau", description="Reset hoàn toàn ván và mở ván mới (random)."
     )
     async def batdau(self, inter: discord.Interaction):
-        # FIX: Defer NGAY LẬP TỨC, trước mọi logic khác
+        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
         try:
-            if not inter.response.is_done():
-                await inter.response.defer(ephemeral=False)
-        except discord.errors.NotFound:
-            # Interaction đã hết hạn (>3s), không thể phản hồi
-            logging.error("Interaction expired for /noitu batdau by %s", inter.user.id)
+            await inter.response.defer(ephemeral=False)
+        except Exception as e:
+            logging.error("Failed to defer /noitu batdau for user %s: %s", inter.user.id, e)
             return
-        except discord.errors.HTTPException as e:
-            if e.code == 40060:
-                # Interaction đã được acknowledge, tiếp tục với followup
-                logging.warning("Interaction already acknowledged for /noitu batdau")
-            else:
-                logging.error("Failed to defer interaction: %s", e)
-                return
 
         # Kiểm tra quyền hạn và kênh (SAU KHI DEFER)
         if not self._has_permission(inter):
@@ -115,19 +106,12 @@ class NoituSlash(app_commands.Group):
         name="ketthuc", description="Tạm ngưng bot; chỉ nhận lệnh quản trị."
     )
     async def ketthuc(self, inter: discord.Interaction):
-        # FIX: Defer NGAY LẬP TỨC
+        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
         try:
-            if not inter.response.is_done():
-                await inter.response.defer(ephemeral=False)
-        except discord.errors.NotFound:
-            logging.error("Interaction expired for /noitu ketthuc by %s", inter.user.id)
+            await inter.response.defer(ephemeral=False)
+        except Exception as e:
+            logging.error("Failed to defer /noitu ketthuc for user %s: %s", inter.user.id, e)
             return
-        except discord.errors.HTTPException as e:
-            if e.code == 40060:
-                logging.warning("Interaction already acknowledged for /noitu ketthuc")
-            else:
-                logging.error("Failed to defer interaction: %s", e)
-                return
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -151,19 +135,12 @@ class NoituSlash(app_commands.Group):
         name="goiy", description="Gợi ý, cho người cuối thắng và mở ván mới."
     )
     async def goiy(self, inter: discord.Interaction):
-        # FIX: Defer NGAY LẬP TỨC (ephemeral=True vì gợi ý là riêng tư)
+        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
         try:
-            if not inter.response.is_done():
-                await inter.response.defer(ephemeral=True)
-        except discord.errors.NotFound:
-            logging.error("Interaction expired for /noitu goiy by %s", inter.user.id)
+            await inter.response.defer(ephemeral=True)
+        except Exception as e:
+            logging.error("Failed to defer /noitu goiy for user %s: %s", inter.user.id, e)
             return
-        except discord.errors.HTTPException as e:
-            if e.code == 40060:
-                logging.warning("Interaction already acknowledged for /noitu goiy")
-            else:
-                logging.error("Failed to defer interaction: %s", e)
-                return
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -241,19 +218,12 @@ class NoituSlash(app_commands.Group):
     @app_commands.command(name="bxh", description="Xem bảng xếp hạng (top 10).")
     @app_commands.describe(solan="Số người đứng đầu muốn xem (mặc định 10, tối đa 25)")
     async def bxh(self, inter: discord.Interaction, solan: int = 10):
-        # FIX: Defer NGAY LẬP TỨC
+        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
         try:
-            if not inter.response.is_done():
-                await inter.response.defer(ephemeral=False)
-        except discord.errors.NotFound:
-            logging.error("Interaction expired for /noitu bxh by %s", inter.user.id)
+            await inter.response.defer(ephemeral=False)
+        except Exception as e:
+            logging.error("Failed to defer /noitu bxh for user %s: %s", inter.user.id, e)
             return
-        except discord.errors.HTTPException as e:
-            if e.code == 40060:
-                logging.warning("Interaction already acknowledged for /noitu bxh")
-            else:
-                logging.error("Failed to defer interaction: %s", e)
-                return
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -275,19 +245,12 @@ class NoituSlash(app_commands.Group):
         name="backup", description="Đóng gói words + leaderboard và gửi DM."
     )
     async def backup(self, inter: discord.Interaction):
-        # FIX: Defer NGAY LẬP TỨC (ephemeral=True vì là riêng tư)
+        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
         try:
-            if not inter.response.is_done():
-                await inter.response.defer(ephemeral=True)
-        except discord.errors.NotFound:
-            logging.error("Interaction expired for /noitu backup by %s", inter.user.id)
+            await inter.response.defer(ephemeral=True)
+        except Exception as e:
+            logging.error("Failed to defer /noitu backup for user %s: %s", inter.user.id, e)
             return
-        except discord.errors.HTTPException as e:
-            if e.code == 40060:
-                logging.warning("Interaction already acknowledged for /noitu backup")
-            else:
-                logging.error("Failed to defer interaction: %s", e)
-                return
 
         if inter.user.id != 237506940391915522:
             await inter.followup.send("❌ Không được phép.", ephemeral=True)
