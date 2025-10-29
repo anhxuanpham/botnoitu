@@ -19,6 +19,9 @@ from .config import (
     LEADERBOARD_PATH,
 )  # import role id
 
+# Lock để tránh xử lý duplicate interactions
+_command_locks = {}
+
 
 def _log_defer_error(command_name: str, user_id: int, error: Exception) -> None:
     """
@@ -46,6 +49,60 @@ def _log_defer_error(command_name: str, user_id: int, error: Exception) -> None:
             "Failed to defer /noitu %s for user %s: %s",
             command_name, user_id, error
         )
+
+
+async def _safe_defer(inter: discord.Interaction, command_name: str, ephemeral: bool = False) -> bool:
+    """
+    Safely defer interaction với checking để tránh errors.
+
+    Returns:
+        True nếu defer thành công, False nếu thất bại
+    """
+    # Check nếu interaction đã được xử lý rồi
+    if inter.response.is_done():
+        logging.warning(
+            "Interaction for /noitu %s already processed for user %s, skipping defer",
+            command_name, inter.user.id
+        )
+        return False
+
+    # Tạo lock key unique cho interaction này
+    lock_key = f"{command_name}:{inter.user.id}:{inter.id}"
+
+    # Check nếu command này đang được xử lý
+    if lock_key in _command_locks:
+        logging.info(
+            "Command /noitu %s already processing for user %s, duplicate interaction ignored",
+            command_name, inter.user.id
+        )
+        # Try respond nếu chưa done
+        try:
+            if not inter.response.is_done():
+                await inter.response.send_message(
+                    "⏳ Lệnh đang được xử lý, vui lòng đợi...",
+                    ephemeral=True
+                )
+        except Exception:
+            pass
+        return False
+
+    # Acquire lock
+    _command_locks[lock_key] = True
+
+    try:
+        await inter.response.defer(ephemeral=ephemeral)
+        return True
+    except Exception as e:
+        _log_defer_error(command_name, inter.user.id, e)
+        # Release lock nếu defer failed
+        _command_locks.pop(lock_key, None)
+        return False
+
+
+def _release_lock(command_name: str, inter: discord.Interaction):
+    """Release command lock sau khi xử lý xong"""
+    lock_key = f"{command_name}:{inter.user.id}:{inter.id}"
+    _command_locks.pop(lock_key, None)
 
 
 def build_leaderboard_embed(
@@ -100,195 +157,196 @@ class NoituSlash(app_commands.Group):
         name="batdau", description="Reset hoàn toàn ván và mở ván mới (random)."
     )
     async def batdau(self, inter: discord.Interaction):
-        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
+        # DEFER AN TOÀN với checking
+        if not await _safe_defer(inter, "batdau", ephemeral=False):
+            return
+
         try:
-            await inter.response.defer(ephemeral=False)
-        except Exception as e:
-            _log_defer_error("batdau", inter.user.id, e)
-            return
+            # Kiểm tra quyền hạn và kênh (SAU KHI DEFER)
+            if not self._has_permission(inter):
+                await inter.followup.send(
+                    "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
+                )
+                return
+            if inter.channel_id != self.channel_id:
+                await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+                return
 
-        # Kiểm tra quyền hạn và kênh (SAU KHI DEFER)
-        if not self._has_permission(inter):
-            await inter.followup.send(
-                "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
-            )
-            return
-        if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
-            return
+            # LOGIC CHÍNH
+            # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+            await asyncio.to_thread(self.r.delete, K_PAUSED(self.ref.gid))
+            opening = await asyncio.to_thread(self.ref.start_round_random)
+            logging.info("/noitu batdau by %s -> %s", inter.user.id, opening)
 
-        # LOGIC CHÍNH
-        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
-        await asyncio.to_thread(self.r.delete, K_PAUSED(self.ref.gid))
-        opening = await asyncio.to_thread(self.ref.start_round_random)
-        logging.info("/noitu batdau by %s -> %s", inter.user.id, opening)
-
-        # Gửi kết quả (công khai)
-        if opening:
-            await inter.followup.send(
-                f"🔄 **Reset ván!**\n🎮 **Ván mới!** Từ mở màn: **{opening}**", ephemeral=False
-            )
-        else:
-            await inter.followup.send("⚠️ Không thể mở ván mới (từ điển rỗng).", ephemeral=False)
+            # Gửi kết quả (công khai)
+            if opening:
+                await inter.followup.send(
+                    f"🔄 **Reset ván!**\n🎮 **Ván mới!** Từ mở màn: **{opening}**", ephemeral=False
+                )
+            else:
+                await inter.followup.send("⚠️ Không thể mở ván mới (từ điển rỗng).", ephemeral=False)
+        finally:
+            # Release lock sau khi xử lý xong (dù thành công hay thất bại)
+            _release_lock("batdau", inter)
 
     @app_commands.command(
         name="ketthuc", description="Tạm ngưng bot; chỉ nhận lệnh quản trị."
     )
     async def ketthuc(self, inter: discord.Interaction):
-        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
+        # DEFER AN TOÀN với checking
+        if not await _safe_defer(inter, "ketthuc", ephemeral=False):
+            return
+
         try:
-            await inter.response.defer(ephemeral=False)
-        except Exception as e:
-            _log_defer_error("ketthuc", inter.user.id, e)
-            return
+            if not self._has_permission(inter):
+                await inter.followup.send(
+                    "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
+                )
+                return
+            if inter.channel_id != self.channel_id:
+                await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+                return
 
-        if not self._has_permission(inter):
+            # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+            await asyncio.to_thread(self.r.set, K_PAUSED(self.ref.gid), "1")
+            logging.info("/noitu ketthuc by %s", inter.user.id)
+
+            # Gửi kết quả (công khai)
             await inter.followup.send(
-                "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
+                "⏸️ **Đã tạm ngưng trò nối từ.** Dùng `/noitu batdau` để chơi lại.", ephemeral=False
             )
-            return
-        if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
-            return
-
-        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
-        await asyncio.to_thread(self.r.set, K_PAUSED(self.ref.gid), "1")
-        logging.info("/noitu ketthuc by %s", inter.user.id)
-
-        # Gửi kết quả (công khai)
-        await inter.followup.send(
-            "⏸️ **Đã tạm ngưng trò nối từ.** Dùng `/noitu batdau` để chơi lại.", ephemeral=False
-        )
+        finally:
+            _release_lock("ketthuc", inter)
 
     @app_commands.command(
         name="goiy", description="Gợi ý, cho người cuối thắng và mở ván mới."
     )
     async def goiy(self, inter: discord.Interaction):
-        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
-        try:
-            await inter.response.defer(ephemeral=True)
-        except Exception as e:
-            _log_defer_error("goiy", inter.user.id, e)
-            return
-
-        if not self._has_permission(inter):
-            await inter.followup.send(
-                "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
-            )
-            return
-        if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
-            return
-
-        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
-        is_paused = await asyncio.to_thread(self.r.get, K_PAUSED(self.ref.gid))
-        if is_paused == "1":
-            await inter.followup.send(
-                "⏸️ Đang tạm ngưng. Dùng `/noitu batdau` để tiếp tục.", ephemeral=True
-            )
-            return
-
-        last_uid = await asyncio.to_thread(self.r.get, K_LAST_USER(self.ref.gid))
-        if not last_uid:
-            await inter.followup.send("⚠️ Chưa có người chơi trước đó.", ephemeral=True)
-            return
-
-        if last_uid == 'BOT':
-            await inter.followup.send("⚠️ Lần chơi cuối cùng là của bot. Không thể trao chiến thắng.", ephemeral=True)
+        # DEFER AN TOÀN với checking
+        if not await _safe_defer(inter, "goiy", ephemeral=True):
             return
 
         try:
-            last_uid_int = int(last_uid)
-        except ValueError:
-            await inter.followup.send(f"⚠️ ID người chơi cuối cùng '{last_uid}' không hợp lệ (lỗi dữ liệu).",
-                                      ephemeral=True)
-            return
+            if not self._has_permission(inter):
+                await inter.followup.send(
+                    "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
+                )
+                return
+            if inter.channel_id != self.channel_id:
+                await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+                return
 
-        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
-        hint = await asyncio.to_thread(self.ref.get_hint)
-        if hint:
-            await inter.followup.send(f"💡 **Gợi ý:** `{hint}`", ephemeral=True)
+            # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+            is_paused = await asyncio.to_thread(self.r.get, K_PAUSED(self.ref.gid))
+            if is_paused == "1":
+                await inter.followup.send(
+                    "⏸️ Đang tạm ngưng. Dùng `/noitu batdau` để tiếp tục.", ephemeral=True
+                )
+                return
 
-        # Logic trao thưởng (công khai)
-        member = inter.guild.get_member(last_uid_int) if inter.guild else None
-        if not member and inter.guild:
+            last_uid = await asyncio.to_thread(self.r.get, K_LAST_USER(self.ref.gid))
+            if not last_uid:
+                await inter.followup.send("⚠️ Chưa có người chơi trước đó.", ephemeral=True)
+                return
+
+            if last_uid == 'BOT':
+                await inter.followup.send("⚠️ Lần chơi cuối cùng là của bot. Không thể trao chiến thắng.", ephemeral=True)
+                return
+
             try:
-                member = await inter.guild.fetch_member(last_uid_int)
-            except Exception:
-                member = None
-        display_name = member.display_name if member else str(last_uid)
+                last_uid_int = int(last_uid)
+            except ValueError:
+                await inter.followup.send(f"⚠️ ID người chơi cuối cùng '{last_uid}' không hợp lệ (lỗi dữ liệu).",
+                                          ephemeral=True)
+                return
 
-        # FIX: Wrap blocking file I/O in asyncio.to_thread()
-        total_wins = await asyncio.to_thread(
-            record_win_json,
-            user_id=str(last_uid),
-            display_name=display_name,
-            base_dir="./data",
-        )
-        top5 = await asyncio.to_thread(get_leaderboard_json, top_n=5, base_dir="./data")
-        lb_embed = format_leaderboard_embed(top5)
+            # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+            hint = await asyncio.to_thread(self.ref.get_hint)
+            if hint:
+                await inter.followup.send(f"💡 **Gợi ý:** `{hint}`", ephemeral=True)
 
-        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
-        opening = await asyncio.to_thread(self.ref.start_round_random)
-        if opening:
-            # Gửi tin nhắn công khai (dùng ephemeral=False)
-            await inter.followup.send(
-                f"🏁 **<@{last_uid}> thắng!** (tổng: {total_wins})\n"
-                f"🔄 **Ván mới!** Từ mở màn: **{opening}**",
-                embed=lb_embed, ephemeral=False
+            # Logic trao thưởng (công khai)
+            member = inter.guild.get_member(last_uid_int) if inter.guild else None
+            if not member and inter.guild:
+                try:
+                    member = await inter.guild.fetch_member(last_uid_int)
+                except Exception:
+                    member = None
+            display_name = member.display_name if member else str(last_uid)
+
+            # FIX: Wrap blocking file I/O in asyncio.to_thread()
+            total_wins = await asyncio.to_thread(
+                record_win_json,
+                user_id=str(last_uid),
+                display_name=display_name,
+                base_dir="./data",
             )
-        else:
-            await inter.followup.send(
-                f"🏁 **<@{last_uid}> thắng!** (tổng: {total_wins})\n"
-                f"⚠️ Không thể mở ván mới (từ điển rỗng).",
-                embed=lb_embed, ephemeral=False
-            )
+            top5 = await asyncio.to_thread(get_leaderboard_json, top_n=5, base_dir="./data")
+            lb_embed = format_leaderboard_embed(top5)
+
+            # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+            opening = await asyncio.to_thread(self.ref.start_round_random)
+            if opening:
+                # Gửi tin nhắn công khai (dùng ephemeral=False)
+                await inter.followup.send(
+                    f"🏁 **<@{last_uid}> thắng!** (tổng: {total_wins})\n"
+                    f"🔄 **Ván mới!** Từ mở màn: **{opening}**",
+                    embed=lb_embed, ephemeral=False
+                )
+            else:
+                await inter.followup.send(
+                    f"🏁 **<@{last_uid}> thắng!** (tổng: {total_wins})\n"
+                    f"⚠️ Không thể mở ván mới (từ điển rỗng).",
+                    embed=lb_embed, ephemeral=False
+                )
+        finally:
+            _release_lock("goiy", inter)
 
     @app_commands.command(name="bxh", description="Xem bảng xếp hạng (top 10).")
     @app_commands.describe(solan="Số người đứng đầu muốn xem (mặc định 10, tối đa 25)")
     async def bxh(self, inter: discord.Interaction, solan: int = 10):
-        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
+        # DEFER AN TOÀN với checking
+        if not await _safe_defer(inter, "bxh", ephemeral=False):
+            return
+
         try:
-            await inter.response.defer(ephemeral=False)
-        except Exception as e:
-            _log_defer_error("bxh", inter.user.id, e)
-            return
+            if not self._has_permission(inter):
+                await inter.followup.send(
+                    "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
+                )
+                return
+            if inter.channel_id != self.channel_id:
+                await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+                return
 
-        if not self._has_permission(inter):
-            await inter.followup.send(
-                "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
-            )
-            return
-        if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
-            return
+            top_n = max(1, min(25, solan))
+            # FIX: Wrap blocking file I/O in asyncio.to_thread()
+            rows = await asyncio.to_thread(get_leaderboard_json, top_n=top_n)
+            embed = format_leaderboard_embed(rows)
 
-        top_n = max(1, min(25, solan))
-        # FIX: Wrap blocking file I/O in asyncio.to_thread()
-        rows = await asyncio.to_thread(get_leaderboard_json, top_n=top_n)
-        embed = format_leaderboard_embed(rows)
-
-        await inter.followup.send(embed=embed, ephemeral=False)
+            await inter.followup.send(embed=embed, ephemeral=False)
+        finally:
+            _release_lock("bxh", inter)
 
     @app_commands.command(
         name="backup", description="Đóng gói words + leaderboard và gửi DM."
     )
     async def backup(self, inter: discord.Interaction):
-        # DEFER NGAY LẬP TỨC - KHÔNG CÓ LOGIC NÀO TRƯỚC ĐÓ
+        # DEFER AN TOÀN với checking
+        if not await _safe_defer(inter, "backup", ephemeral=True):
+            return
+
         try:
-            await inter.response.defer(ephemeral=True)
-        except Exception as e:
-            _log_defer_error("backup", inter.user.id, e)
-            return
+            if inter.user.id != 237506940391915522:
+                await inter.followup.send("❌ Không được phép.", ephemeral=True)
+                return
 
-        if inter.user.id != 237506940391915522:
-            await inter.followup.send("❌ Không được phép.", ephemeral=True)
-            return
-
-        await inter.followup.send(
-            "⏳ Đang backup, sẽ gửi file qua DM khi xong.", ephemeral=True
-        )
-        asyncio.create_task(self._backup_dm_task(inter.user))
+            await inter.followup.send(
+                "⏳ Đang backup, sẽ gửi file qua DM khi xong.", ephemeral=True
+            )
+            asyncio.create_task(self._backup_dm_task(inter.user))
+        finally:
+            _release_lock("backup", inter)
 
     async def _backup_dm_task(self, user: discord.User):
         files = [p for p in [DICT_PATH, LEADERBOARD_PATH, BLACKLIST_PATH] if p.exists()]
