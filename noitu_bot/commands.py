@@ -98,8 +98,9 @@ class NoituSlash(app_commands.Group):
             return
 
         # LOGIC CHÍNH
-        self.r.delete(K_PAUSED(self.ref.gid))
-        opening = self.ref.start_round_random()
+        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+        await asyncio.to_thread(self.r.delete, K_PAUSED(self.ref.gid))
+        opening = await asyncio.to_thread(self.ref.start_round_random)
         logging.info("/noitu batdau by %s -> %s", inter.user.id, opening)
 
         # Gửi kết quả (công khai)
@@ -137,7 +138,8 @@ class NoituSlash(app_commands.Group):
             await inter.followup.send("❌ Sai kênh.", ephemeral=True)
             return
 
-        self.r.set(K_PAUSED(self.ref.gid), "1")
+        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+        await asyncio.to_thread(self.r.set, K_PAUSED(self.ref.gid), "1")
         logging.info("/noitu ketthuc by %s", inter.user.id)
 
         # Gửi kết quả (công khai)
@@ -171,13 +173,16 @@ class NoituSlash(app_commands.Group):
         if inter.channel_id != self.channel_id:
             await inter.followup.send("❌ Sai kênh.", ephemeral=True)
             return
-        if self.r.get(K_PAUSED(self.ref.gid)) == "1":
+
+        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+        is_paused = await asyncio.to_thread(self.r.get, K_PAUSED(self.ref.gid))
+        if is_paused == "1":
             await inter.followup.send(
                 "⏸️ Đang tạm ngưng. Dùng `/noitu batdau` để tiếp tục.", ephemeral=True
             )
             return
 
-        last_uid = self.r.get(K_LAST_USER(self.ref.gid))
+        last_uid = await asyncio.to_thread(self.r.get, K_LAST_USER(self.ref.gid))
         if not last_uid:
             await inter.followup.send("⚠️ Chưa có người chơi trước đó.", ephemeral=True)
             return
@@ -193,7 +198,8 @@ class NoituSlash(app_commands.Group):
                                       ephemeral=True)
             return
 
-        hint = self.ref.get_hint()
+        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+        hint = await asyncio.to_thread(self.ref.get_hint)
         if hint:
             await inter.followup.send(f"💡 **Gợi ý:** `{hint}`", ephemeral=True)
 
@@ -206,15 +212,18 @@ class NoituSlash(app_commands.Group):
                 member = None
         display_name = member.display_name if member else str(last_uid)
 
-        total_wins = record_win_json(
+        # FIX: Wrap blocking file I/O in asyncio.to_thread()
+        total_wins = await asyncio.to_thread(
+            record_win_json,
             user_id=str(last_uid),
             display_name=display_name,
             base_dir="./data",
         )
-        top5 = get_leaderboard_json(top_n=5, base_dir="./data")
+        top5 = await asyncio.to_thread(get_leaderboard_json, top_n=5, base_dir="./data")
         lb_embed = format_leaderboard_embed(top5)
 
-        opening = self.ref.start_round_random()
+        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+        opening = await asyncio.to_thread(self.ref.start_round_random)
         if opening:
             # Gửi tin nhắn công khai (dùng ephemeral=False)
             await inter.followup.send(
@@ -256,7 +265,8 @@ class NoituSlash(app_commands.Group):
             return
 
         top_n = max(1, min(25, solan))
-        rows = get_leaderboard_json(top_n=top_n)
+        # FIX: Wrap blocking file I/O in asyncio.to_thread()
+        rows = await asyncio.to_thread(get_leaderboard_json, top_n=top_n)
         embed = format_leaderboard_embed(rows)
 
         await inter.followup.send(embed=embed, ephemeral=False)

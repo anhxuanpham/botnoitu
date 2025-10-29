@@ -194,9 +194,11 @@ def run():
     @tasks.loop(seconds=60)
     async def send_last_word_reminder():
         await bot.wait_until_ready()
-        if r.get(K_PAUSED(gid)) == "1":
+        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+        is_paused = await asyncio.to_thread(r.get, K_PAUSED(gid))
+        if is_paused == "1":
             return
-        last_word = r.get(K_LAST_WORD(gid))
+        last_word = await asyncio.to_thread(r.get, K_LAST_WORD(gid))
         channel = bot.get_channel(CHANNEL_ID)
 
         if channel and last_word:
@@ -310,7 +312,8 @@ def run():
         if len(content.split()) != 2:
             return
 
-        last_user = r.get(K_LAST_USER(ref.gid))
+        # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+        last_user = await asyncio.to_thread(r.get, K_LAST_USER(ref.gid))
         if last_user and last_user != "BOT" and last_user == str(message.author.id):
             try:
                 await message.add_reaction("⏳")
@@ -318,12 +321,15 @@ def run():
                 pass
             return
 
-        res = ref.submit(user_id=str(message.author.id), raw_phrase=content)
+        # FIX: Wrap blocking ref.submit() in asyncio.to_thread()
+        res = await asyncio.to_thread(ref.submit, user_id=str(message.author.id), raw_phrase=content)
 
         is_correct_word = res["ok"] and res["msg"] not in ["USED", "RULE_MISMATCH"]
 
         if res["msg"] != "ENDED":
-            record_word_attempt_json(
+            # FIX: Wrap blocking file I/O in asyncio.to_thread()
+            await asyncio.to_thread(
+                record_word_attempt_json,
                 user_id=str(message.author.id),
                 is_correct=is_correct_word,
                 base_dir="./data"
@@ -369,15 +375,17 @@ def run():
                 except (ValueError, AttributeError):
                     display_name = f"User {winner_id}"
 
-                total_wins = record_win_json(
+                # FIX: Wrap blocking file I/O in asyncio.to_thread()
+                total_wins = await asyncio.to_thread(
+                    record_win_json,
                     user_id=str(winner_id),
                     display_name=display_name,
                     base_dir="./data",
                 )
-                top5 = get_leaderboard_json(top_n=5, base_dir="./data")
+                top5 = await asyncio.to_thread(get_leaderboard_json, top_n=5, base_dir="./data")
                 lb_embed = format_leaderboard_embed(top5)
 
-                hint = ref.get_hint()
+                hint = await asyncio.to_thread(ref.get_hint)
                 if res["msg"] == "FAIL_LIMIT_REACHED":
                     win_announcement = (
                         f"💡 **Gợi ý:** `{hint}`"
@@ -389,7 +397,8 @@ def run():
                         f"🏁 **<@{winner_id}> thắng!** (tổng: {total_wins})"
                     )
 
-                opening = ref.start_round_random()
+                # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+                opening = await asyncio.to_thread(ref.start_round_random)
                 if opening:
                     await message.channel.send(
                         f"{win_announcement}\n"
@@ -403,7 +412,8 @@ def run():
                         embed=lb_embed,
                     )
             else:
-                opening = ref.start_round_random()
+                # FIX: Wrap blocking Redis operations in asyncio.to_thread()
+                opening = await asyncio.to_thread(ref.start_round_random)
                 if opening:
                     await message.channel.send(
                         f"🔒 Ván chơi kết thúc do có quá nhiều lượt sai.\n"
