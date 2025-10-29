@@ -72,7 +72,8 @@ class NoituSlash(app_commands.Group):
     )
     async def batdau(self, inter: discord.Interaction):
         # FIX: Defer CÔNG KHAI (ephemeral=False) ngay lập tức
-        await inter.response.defer(ephemeral=False)
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=False)
 
         # Kiểm tra quyền hạn và kênh (SAU KHI DEFER)
         if not self._has_permission(inter):
@@ -103,7 +104,8 @@ class NoituSlash(app_commands.Group):
     )
     async def ketthuc(self, inter: discord.Interaction):
         # FIX: Defer CÔNG KHAI
-        await inter.response.defer(ephemeral=False)
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=False)
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -127,7 +129,8 @@ class NoituSlash(app_commands.Group):
     )
     async def goiy(self, inter: discord.Interaction):
         # FIX: Defer ẨN (vì tin nhắn gợi ý là Ẩn)
-        await inter.response.defer(ephemeral=True)
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=True)
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -198,8 +201,9 @@ class NoituSlash(app_commands.Group):
     @app_commands.command(name="bxh", description="Xem bảng xếp hạng (top 10).")
     @app_commands.describe(solan="Số người đứng đầu muốn xem (mặc định 10, tối đa 25)")
     async def bxh(self, inter: discord.Interaction, solan: int = 10):
-        # FIX: Defer CÔNG KHAI
-        await inter.response.defer(ephemeral=False)
+        # FIX: Defer CÔNG KHAI - Check if not already acknowledged
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=False)
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -221,7 +225,8 @@ class NoituSlash(app_commands.Group):
     )
     async def backup(self, inter: discord.Interaction):
         # FIX: Defer ẨN (vì tin nhắn này là Ẩn)
-        await inter.response.defer(ephemeral=True)
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=True)
 
         if inter.user.id != 237506940391915522:
             await inter.followup.send("❌ Không được phép.", ephemeral=True)
