@@ -71,9 +71,16 @@ class NoituSlash(app_commands.Group):
         name="batdau", description="Reset hoàn toàn ván và mở ván mới (random)."
     )
     async def batdau(self, inter: discord.Interaction):
-        # FIX: Defer CÔNG KHAI (ephemeral=False) ngay lập tức
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=False)
+        # FIX: Try to defer, handle if interaction expired
+        try:
+            if not inter.response.is_done():
+                await inter.response.defer(ephemeral=False)
+        except discord.errors.NotFound:
+            logging.warning("batdau: Interaction expired before defer (404/10062)")
+            return
+        except Exception as e:
+            logging.error(f"batdau: Error during defer: {e}")
+            return
 
         # Kiểm tra quyền hạn và kênh (SAU KHI DEFER)
         if not self._has_permission(inter):
@@ -103,9 +110,16 @@ class NoituSlash(app_commands.Group):
         name="ketthuc", description="Tạm ngưng bot; chỉ nhận lệnh quản trị."
     )
     async def ketthuc(self, inter: discord.Interaction):
-        # FIX: Defer CÔNG KHAI
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=False)
+        # FIX: Try to defer, handle if interaction expired
+        try:
+            if not inter.response.is_done():
+                await inter.response.defer(ephemeral=False)
+        except discord.errors.NotFound:
+            logging.warning("ketthuc: Interaction expired before defer (404/10062)")
+            return
+        except Exception as e:
+            logging.error(f"ketthuc: Error during defer: {e}")
+            return
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -128,9 +142,16 @@ class NoituSlash(app_commands.Group):
         name="goiy", description="Gợi ý, cho người cuối thắng và mở ván mới."
     )
     async def goiy(self, inter: discord.Interaction):
-        # FIX: Defer ẨN (vì tin nhắn gợi ý là Ẩn)
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=True)
+        # FIX: Try to defer, handle if interaction expired
+        try:
+            if not inter.response.is_done():
+                await inter.response.defer(ephemeral=True)
+        except discord.errors.NotFound:
+            logging.warning("goiy: Interaction expired before defer (404/10062)")
+            return
+        except Exception as e:
+            logging.error(f"goiy: Error during defer: {e}")
+            return
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -201,9 +222,16 @@ class NoituSlash(app_commands.Group):
     @app_commands.command(name="bxh", description="Xem bảng xếp hạng (top 10).")
     @app_commands.describe(solan="Số người đứng đầu muốn xem (mặc định 10, tối đa 25)")
     async def bxh(self, inter: discord.Interaction, solan: int = 10):
-        # FIX: Defer CÔNG KHAI - Check if not already acknowledged
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=False)
+        # FIX: Try to defer, handle if interaction expired
+        try:
+            if not inter.response.is_done():
+                await inter.response.defer(ephemeral=False)
+        except discord.errors.NotFound:
+            logging.warning("bxh: Interaction expired before defer (404/10062)")
+            return
+        except Exception as e:
+            logging.error(f"bxh: Error during defer: {e}")
+            return
 
         if not self._has_permission(inter):
             await inter.followup.send(
@@ -224,9 +252,16 @@ class NoituSlash(app_commands.Group):
         name="backup", description="Đóng gói words + leaderboard và gửi DM."
     )
     async def backup(self, inter: discord.Interaction):
-        # FIX: Defer ẨN (vì tin nhắn này là Ẩn)
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=True)
+        # FIX: Try to defer, handle if interaction expired
+        try:
+            if not inter.response.is_done():
+                await inter.response.defer(ephemeral=True)
+        except discord.errors.NotFound:
+            logging.warning("backup: Interaction expired before defer (404/10062)")
+            return
+        except Exception as e:
+            logging.error(f"backup: Error during defer: {e}")
+            return
 
         if inter.user.id != 237506940391915522:
             await inter.followup.send("❌ Không được phép.", ephemeral=True)
