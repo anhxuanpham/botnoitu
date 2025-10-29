@@ -4,6 +4,7 @@ import os, asyncio, tarfile, tempfile
 from datetime import datetime
 from pathlib import Path
 from discord import app_commands
+from discord.errors import HTTPException, NotFound
 from .redis_keys import K_PAUSED, K_ENDED, K_LAST_USER
 from .referee import WordChainRefereeByLastWordExact
 from .leaderboard_json import (
@@ -17,6 +18,34 @@ from .config import (
     BLACKLIST_PATH,
     LEADERBOARD_PATH,
 )  # import role id
+
+
+def _log_defer_error(command_name: str, user_id: int, error: Exception) -> None:
+    """
+    Log defer errors với level phù hợp.
+    - 10062 (Unknown interaction): Interaction đã hết hạn - thường xảy ra khi bot restart
+    - 40060 (Already acknowledged): Interaction đã được xử lý rồi
+    Cả 2 error này là bình thường khi bot mới restart hoặc user spam commands.
+    """
+    error_str = str(error)
+    if "10062" in error_str or "Unknown interaction" in error_str:
+        # Interaction token đã hết hạn (>3s) hoặc bot restart
+        logging.warning(
+            "Interaction expired for /noitu %s (user %s): User may be using cached command from before bot restart. Error: %s",
+            command_name, user_id, error
+        )
+    elif "40060" in error_str or "already been acknowledged" in error_str:
+        # Interaction đã được defer/respond rồi
+        logging.warning(
+            "Interaction already acknowledged for /noitu %s (user %s): %s",
+            command_name, user_id, error
+        )
+    else:
+        # Lỗi khác, log ở mức ERROR
+        logging.error(
+            "Failed to defer /noitu %s for user %s: %s",
+            command_name, user_id, error
+        )
 
 
 def build_leaderboard_embed(
@@ -75,7 +104,7 @@ class NoituSlash(app_commands.Group):
         try:
             await inter.response.defer(ephemeral=False)
         except Exception as e:
-            logging.error("Failed to defer /noitu batdau for user %s: %s", inter.user.id, e)
+            _log_defer_error("batdau", inter.user.id, e)
             return
 
         # Kiểm tra quyền hạn và kênh (SAU KHI DEFER)
@@ -110,7 +139,7 @@ class NoituSlash(app_commands.Group):
         try:
             await inter.response.defer(ephemeral=False)
         except Exception as e:
-            logging.error("Failed to defer /noitu ketthuc for user %s: %s", inter.user.id, e)
+            _log_defer_error("ketthuc", inter.user.id, e)
             return
 
         if not self._has_permission(inter):
@@ -139,7 +168,7 @@ class NoituSlash(app_commands.Group):
         try:
             await inter.response.defer(ephemeral=True)
         except Exception as e:
-            logging.error("Failed to defer /noitu goiy for user %s: %s", inter.user.id, e)
+            _log_defer_error("goiy", inter.user.id, e)
             return
 
         if not self._has_permission(inter):
@@ -222,7 +251,7 @@ class NoituSlash(app_commands.Group):
         try:
             await inter.response.defer(ephemeral=False)
         except Exception as e:
-            logging.error("Failed to defer /noitu bxh for user %s: %s", inter.user.id, e)
+            _log_defer_error("bxh", inter.user.id, e)
             return
 
         if not self._has_permission(inter):
@@ -249,7 +278,7 @@ class NoituSlash(app_commands.Group):
         try:
             await inter.response.defer(ephemeral=True)
         except Exception as e:
-            logging.error("Failed to defer /noitu backup for user %s: %s", inter.user.id, e)
+            _log_defer_error("backup", inter.user.id, e)
             return
 
         if inter.user.id != 237506940391915522:
