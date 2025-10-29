@@ -23,6 +23,7 @@ OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "")
 CHANNEL_ID: int = int(os.getenv('CHANNEL_ID', '0'))
 CHAT_ROLE_ID: int = int(os.getenv('CHAT_ROLE_ID', '0'))
 ROLE_ID: int = int(os.getenv("ROLE_ID", '0'))
+ADMIN_USER_ID: int = int(os.getenv("ADMIN_USER_ID", '0'))
 
 # FIX: Đảm bảo CHAT_CHANNEL_IDS là một LIST of INTs bằng cách đọc từ env và tách bằng dấu phẩy (nếu có).
 chat_channels_raw = os.getenv('CHAT_CHANNEL_IDS', str(CHANNEL_ID))

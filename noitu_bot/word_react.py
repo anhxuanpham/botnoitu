@@ -37,11 +37,7 @@ def add_word_to_dictionary(r, phrase: str, ref) -> bool:
     phrase = phrase.lower()
     print("vào thêm từ")
     if r.sismember(K_DICT(), phrase):
-        try:
-            return False
-        except:
-            pass
-        return
+        return False
     try:
         with open(DICT_PATH, "a+", encoding="utf-8") as f:
             f.seek(0, os.SEEK_END)
@@ -50,8 +46,9 @@ def add_word_to_dictionary(r, phrase: str, ref) -> bool:
                 if f.read(1) != "\n":
                     f.write("\n")
             f.write(phrase + "\n")
-    except:
-        return
+    except Exception as e:
+        logging.error(f"Failed to write word '{phrase}' to dictionary file: {e}")
+        return False
     ft = first_token(phrase)
     pipe = r.pipeline()
     pipe.sadd(K_DICT(), phrase)
@@ -68,8 +65,9 @@ def add_word_to_dictionary(r, phrase: str, ref) -> bool:
     try:
         pipe.execute()
         return True
-    except:
-        pass
+    except Exception as e:
+        logging.error(f"Failed to add word '{phrase}' to Redis: {e}")
+        return False
 
 
 async def handle_word_react(
@@ -133,10 +131,11 @@ async def handle_word_react(
         if r.sismember(K_DICT(), phrase):
             try:
                 await channel.send(f"⚠️ Từ **{content}** đã tồn tại trong từ điển.")
-            except:
-                pass
+            except discord.HTTPException as e:
+                logging.error(f"Failed to send duplicate word message: {e}")
             return
-        try:
+
+        def write_word_to_file():
             with open(dict_path, "a+", encoding="utf-8") as f:
                 f.seek(0, os.SEEK_END)
                 if f.tell() > 0:
@@ -144,7 +143,11 @@ async def handle_word_react(
                     if f.read(1) != "\n":
                         f.write("\n")
                 f.write(phrase + "\n")
-        except:
+
+        try:
+            await asyncio.to_thread(write_word_to_file)
+        except Exception as e:
+            logging.error(f"Failed to write word '{phrase}' to file: {e}")
             return
 
         pipe = r.pipeline()
@@ -164,18 +167,20 @@ async def handle_word_react(
             await channel.send(
                 f"✅ Đã thêm **{content}** vào từ điển (dùng được ngay)!"
             )
-        except:
-            pass
+        except discord.HTTPException as e:
+            logging.error(f"Failed to send success message or execute Redis pipeline: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error adding word to Redis: {e}")
 
     elif emoji == EMOJI_DEL:
         if not r.sismember(K_DICT(), phrase):
             try:
                 await channel.send(f"⚠️ Từ **{content}** không có trong từ điển.")
-            except:
-                pass
+            except discord.HTTPException as e:
+                logging.error(f"Failed to send word not found message: {e}")
             return
 
-        try:
+        def remove_word_from_file():
             src = Path(dict_path)
             tmp = src.with_suffix(src.suffix + ".tmp")
             removed = False
@@ -189,18 +194,25 @@ async def handle_word_react(
                     fout.write(line)
             if removed:
                 os.replace(tmp, src)
+                return True
             else:
                 try:
                     tmp.unlink(missing_ok=True)
-                except:
-                    pass
+                except Exception as e:
+                    logging.warning(f"Failed to delete temp file: {e}")
+                return False
+
+        try:
+            removed = await asyncio.to_thread(remove_word_from_file)
+            if not removed:
                 await channel.send("⚠️ Không thấy dòng cần xoá trong file.")
                 return
         except Exception as e:
+            logging.error(f"Failed to remove word '{phrase}' from file: {e}")
             try:
                 await channel.send(f"❌ Lỗi khi xoá file: {e}")
-            except:
-                pass
+            except discord.HTTPException as http_err:
+                logging.error(f"Failed to send error message: {http_err}")
             return
 
         try:
@@ -218,8 +230,10 @@ async def handle_word_react(
                 print(f"[BLACKLIST] Đã thêm '{phrase}' vào blacklist")
             else:
                 print(f"[BLACKLIST] '{phrase}' đã tồn tại trong blacklist")
-        except:
-            pass
+        except discord.HTTPException as e:
+            logging.error(f"Failed to send delete confirmation message: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error removing word from Redis: {e}")
 
 
 async def _runner(*args, **kwargs):

@@ -17,7 +17,8 @@ from .config import (
     DICT_PATH,
     BLACKLIST_PATH,
     LEADERBOARD_PATH,
-)  # import role id
+    ADMIN_USER_ID,
+)  # import role id and admin user id
 
 
 def _log_defer_error(command_name: str, user_id: int, error: Exception) -> None:
@@ -281,7 +282,7 @@ class NoituSlash(app_commands.Group):
             _log_defer_error("backup", inter.user.id, e)
             return
 
-        if inter.user.id != 237506940391915522:
+        if ADMIN_USER_ID and inter.user.id != ADMIN_USER_ID:
             await inter.followup.send("❌ Không được phép.", ephemeral=True)
             return
 
