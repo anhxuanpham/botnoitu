@@ -71,20 +71,19 @@ class NoituSlash(app_commands.Group):
         name="batdau", description="Reset hoàn toàn ván và mở ván mới (random)."
     )
     async def batdau(self, inter: discord.Interaction):
-        # FIX: Defer CÔNG KHAI (ephemeral=False) ngay lập tức
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=False)
-
-        # Kiểm tra quyền hạn và kênh (SAU KHI DEFER)
+        # Kiểm tra quyền hạn và kênh TRƯỚC KHI DEFER
         if not self._has_permission(inter):
-            # Tin nhắn lỗi vẫn có thể là Ẩn (ephemeral=True)
-            await inter.followup.send(
+            await inter.response.send_message(
                 "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
             )
             return
         if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+            await inter.response.send_message("❌ Sai kênh.", ephemeral=True)
             return
+
+        # FIX: Defer CÔNG KHAI sau khi đã check permission
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=False)
 
         # LOGIC CHÍNH
         self.r.delete(K_PAUSED(self.ref.gid))
@@ -103,18 +102,19 @@ class NoituSlash(app_commands.Group):
         name="ketthuc", description="Tạm ngưng bot; chỉ nhận lệnh quản trị."
     )
     async def ketthuc(self, inter: discord.Interaction):
-        # FIX: Defer CÔNG KHAI
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=False)
-
+        # Kiểm tra quyền hạn và kênh TRƯỚC KHI DEFER
         if not self._has_permission(inter):
-            await inter.followup.send(
+            await inter.response.send_message(
                 "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
             )
             return
         if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+            await inter.response.send_message("❌ Sai kênh.", ephemeral=True)
             return
+
+        # FIX: Defer CÔNG KHAI sau khi đã check permission
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=False)
 
         self.r.set(K_PAUSED(self.ref.gid), "1")
         logging.info("/noitu ketthuc by %s", inter.user.id)
@@ -128,18 +128,19 @@ class NoituSlash(app_commands.Group):
         name="goiy", description="Gợi ý, cho người cuối thắng và mở ván mới."
     )
     async def goiy(self, inter: discord.Interaction):
-        # FIX: Defer ẨN (vì tin nhắn gợi ý là Ẩn)
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=True)
-
+        # Kiểm tra quyền hạn và kênh TRƯỚC KHI DEFER
         if not self._has_permission(inter):
-            await inter.followup.send(
+            await inter.response.send_message(
                 "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
             )
             return
         if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+            await inter.response.send_message("❌ Sai kênh.", ephemeral=True)
             return
+
+        # FIX: Defer ẨN sau khi đã check permission
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=True)
         if self.r.get(K_PAUSED(self.ref.gid)) == "1":
             await inter.followup.send(
                 "⏸️ Đang tạm ngưng. Dùng `/noitu batdau` để tiếp tục.", ephemeral=True
@@ -201,18 +202,19 @@ class NoituSlash(app_commands.Group):
     @app_commands.command(name="bxh", description="Xem bảng xếp hạng (top 10).")
     @app_commands.describe(solan="Số người đứng đầu muốn xem (mặc định 10, tối đa 25)")
     async def bxh(self, inter: discord.Interaction, solan: int = 10):
-        # FIX: Defer CÔNG KHAI - Check if not already acknowledged
-        if not inter.response.is_done():
-            await inter.response.defer(ephemeral=False)
-
+        # Kiểm tra quyền hạn và kênh TRƯỚC KHI DEFER
         if not self._has_permission(inter):
-            await inter.followup.send(
+            await inter.response.send_message(
                 "❌ Bạn không có quyền dùng lệnh này.", ephemeral=True
             )
             return
         if inter.channel_id != self.channel_id:
-            await inter.followup.send("❌ Sai kênh.", ephemeral=True)
+            await inter.response.send_message("❌ Sai kênh.", ephemeral=True)
             return
+
+        # FIX: Defer CÔNG KHAI sau khi đã check permission
+        if not inter.response.is_done():
+            await inter.response.defer(ephemeral=False)
 
         top_n = max(1, min(25, solan))
         rows = get_leaderboard_json(top_n=top_n)
@@ -224,13 +226,14 @@ class NoituSlash(app_commands.Group):
         name="backup", description="Đóng gói words + leaderboard và gửi DM."
     )
     async def backup(self, inter: discord.Interaction):
-        # FIX: Defer ẨN (vì tin nhắn này là Ẩn)
+        # Kiểm tra quyền TRƯỚC KHI DEFER
+        if inter.user.id != 237506940391915522:
+            await inter.response.send_message("❌ Không được phép.", ephemeral=True)
+            return
+
+        # FIX: Defer ẨN sau khi đã check permission
         if not inter.response.is_done():
             await inter.response.defer(ephemeral=True)
-
-        if inter.user.id != 237506940391915522:
-            await inter.followup.send("❌ Không được phép.", ephemeral=True)
-            return
 
         await inter.followup.send(
             "⏳ Đang backup, sẽ gửi file qua DM khi xong.", ephemeral=True
